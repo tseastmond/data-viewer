@@ -21,8 +21,16 @@ class DataViewer:
 
     def __init__(self, df):
         # Get the DataFrame and the base widget.
-        self.df = df
+        self.df = df.reset_index()
         self.root = tk.Tk()
+
+        # Get the columns and widths
+        self.cols = list(self.df.columns)
+        self.colwidth = [0]*len(self.cols)
+
+        # Set the scaling factors and height of the base frame.
+        self.min_height = 600 #self.root.winfo_screenheight() - 50
+        self.min_width = 400 #self.root.winfo_screenwidth()
 
         # Run the window settings.
         self.Window()
@@ -47,7 +55,7 @@ class DataViewer:
         self.root.title('Panda\'s DataFrame Viewer')
 
         # Set the minimum size.
-        self.root.minsize(width=600, height=400)
+        self.root.minsize(width=self.min_width, height=self.min_height)
 
         # Set the colors.
         self.root.configure(background='black')
@@ -81,35 +89,67 @@ class DataViewer:
     def Hello(self):
         print('Hello')
 
+    def ScrollHelp(self, event):
+        '''
+        Configure the scroll bar.
+        '''
+        # Size the canvas and the scroll bar.
+        if self.orient == 'vertical':
+            self.canvas.configure(scrollregion=self.canvas.bbox('all'), width=min(self.min_width-23, self.canvas.bbox('all')[2]), height=self.min_height-23)
+        else:
+            self.canvas.configure(scrollregion=self.canvas.bbox('all'), width=min(self.min_width-23, self.canvas.bbox('all')[2]), height=self.min_height-23)
+
     def Scroll(self):
         '''
         Set up the scroll bar.
         '''
-        # Initialize the scroll bar.
-        scrollbar = tk.Scrollbar(self.root, orient='vertical')
-        scrollbar.grid(column=len(self.df.columns), rowspan=100, sticky='ns')
+        # Define the new frame.
+        myframe = tk.Frame(self.root, relief='groove', width=58, height=200, bd=1)
+        myframe.place(x=0, y=0)
+        myframe.grid(row=0, column=0, sticky='ewns')
 
+        # Set up the canvas for the scroll bar.
+        self.canvas = tk.Canvas(myframe)
+        self.frame = tk.Frame(self.canvas)
+        self.frame.grid(row=0, column=0, sticky='ewns')
+
+        # Get a vertical scroll bar.
+        self.orient = 'vertical'
+        myscrollbar = tk.Scrollbar(myframe, orient='vertical', command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=myscrollbar.set)
+
+        myscrollbar.pack(side='right',fill='y')
+        self.canvas.pack(side='left', fill='both', expand='yes')
+        self.canvas.create_window((0,0),window=self.frame,anchor='nw')
+        self.frame.bind("<Configure>", self.ScrollHelp)
+
+        # Get a horizontal scroll bar.
+        self.orient = 'horizontal'
+        myscrollbar1 = tk.Scrollbar(myframe, orient='horizontal', command=self.canvas.xview)
+        self.canvas.configure(xscrollcommand=myscrollbar1.set)
+
+        myscrollbar1.pack(side='bottom',fill='x')
+        self.canvas.pack(side='top', fill='both', expand='yes')
+        self.canvas.create_window((0,0),window=self.frame,anchor='nw')
+        self.frame.bind("<Configure>", self.ScrollHelp)
+        
     def DataView(self):
         '''
         Set up the view for the data itself.
         '''
-        # Get the columns.
-        cols = list(self.df.columns)
-        colwidth = [0]*len(cols)
-
         # Make headers.
-        for num, x in enumerate(cols):
-            # Keep the column width.
-            colwidth[num] = len(x)*2
+        for num, x in enumerate(self.cols):
+            # Keep the column width, which will be twice the length of the label or the minimum of 50 and the longest string.
+            self.colwidth[num] = max(len(x)*2, min(50, self.df[x].astype(str).str.len().max()))
 
             # Define a tkinter string variable.
             var = tk.StringVar()
             var.set(x)
 
             # Make the cell.
-            b = tk.Entry(self.root, textvar=var, justify='center', bd=3,
+            b = tk.Entry(self.frame, textvar=var, justify='center', bd=1,
                 font=("Times", 10, "bold"), disabledbackground='white',
-                disabledforeground='black', width=colwidth[num])
+                disabledforeground='black', width=self.colwidth[num])
             b.grid(row=0, column=num)
 
             # Disable the text.
@@ -119,9 +159,9 @@ class DataViewer:
         if len(self.df) >= 100:
             view = 100
         else:
-            view = len(df)
+            view = len(self.df)
 
-        for num, x in enumerate(cols):
+        for num, x in enumerate(self.cols):
             for y in range(view):
                 # Set up the tkinter string variable.
                 var = tk.StringVar()
@@ -133,15 +173,20 @@ class DataViewer:
                     var.set(self.df[x].iloc[y])
 
                 # Set the right column.
-                text = tk.Entry(self.root, textvar=var, justify='center', bd=3,
+                text = tk.Entry(self.frame, textvar=var, justify='center', bd=1,
                     font=("Times", 11), disabledbackground='white',
-                    disabledforeground='black', width=colwidth[num])
+                    disabledforeground='black', width=self.colwidth[num])
                 text.grid(row=y+1, column=num)
 
                 # Disable the text.
                 text.configure(state='readonly')
 
+        # Reset the size of our canvas.
+        # print(self.colwidth, sum(self.colwidth)+20)
+        #self.canvas.configure(width=sum(self.colwidth)+20, height=200)
 
-df = pd.read_csv(r'C:\Users\tanne\OneDrive\Python\stocks\data\batch1.csv', encoding='latin')
+
+df = pd.read_csv(r'C:\Users\tanne\OneDrive\Python\stocks\data\batch4.csv', encoding='latin')
 df['ones'] = 1
+df['test_col'] = 'Tanner Scott Eastmond'
 DataViewer(df)
