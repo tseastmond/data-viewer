@@ -1,14 +1,74 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 '''
 Author: Tanner S Eastmond
-Date: 8/11/2018
-Version: 1.0
+Date Updated: 9/5/2018
+Version: 1.1
 Purpose: This class is a data viewer for Pandas DataFrames that allows the user
     to view, filter, and calculate summary statistics for each column.
 '''
-import pandas as pd
-from tkinter import *
 
-class DataViewer:
+import pandas as pd
+import wx
+
+class Data(wx.Panel):
+    '''
+    Here we set up the actual data view window.
+    '''
+
+    def __init__(self, parent, df, rows):
+        # Initialize the panel.
+        wx.Panel.__init__(self, parent)
+
+        # Make the listctrl.
+        self.list = wx.ListCtrl(self, wx.ID_ANY, style=wx.LC_REPORT | wx.LC_HRULES | wx.LC_VRULES)
+
+        # Make headers.
+        for num, x in enumerate(df.columns):
+            # Keep the column width, which will be twice the length of the label or the minimum of 50 and the longest string.
+            self.list.InsertColumn(num, x)
+            self.list.SetColumnWidth(num, width=max(len(x)*20, min(50*10, df[x].astype(str).str.len().max()*10)))
+
+            # Set the font for the whole columns.
+            font = wx.Font(13, wx.ROMAN, wx.NORMAL, wx.FONTWEIGHT_BOLD)
+            self.list.SetFont(font)
+
+        # Size the panel.
+        sizer = wx.BoxSizer()
+        sizer.Add(self.list, 1, wx.EXPAND)
+        self.SetSizer(sizer)
+
+        # We will default to only seeing the first 100 rows, the user can get more.
+        if len(df) >= rows:
+            self.view = rows
+        else:
+            self.view = len(df)
+
+        # Loop over the data.
+        for x in range(self.view):
+            # Set the item.
+            index = self.list.InsertItem(x, df[df.columns[0]].iloc[x])
+
+            # Set the font for the item.
+            font = wx.Font(11, wx.ROMAN, wx.NORMAL, wx.NORMAL)
+            self.list.SetItemFont(index, font)
+
+            # Loop over columns.
+            for y in range(len(df.columns)):
+                # Set the rest of the columns.
+                self.list.SetItem(index, y, df[df.columns[y]].iloc[x])
+
+class PageTwo(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent)
+        t = wx.StaticText(self, -1, "This is a PageTwo object", (40,40))
+
+class PageThree(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent)
+        t = wx.StaticText(self, -1, "This is a PageThree object", (60,60))
+
+class DataViewer(wx.Frame):
     '''
     This class is a data viewer for Pandas DataFrames that allows the user
     to view, filter, and calculate summary statistics for each column.
@@ -18,166 +78,55 @@ class DataViewer:
     df  - A Pandas DataFrame object.
     '''
 
-    def __init__(self, df):
-        # Get the DataFrame and the base widget.
-        self.df = df.reset_index()
-        self.root = Tk()
+    def __init__(self, df, rows=100):
+        # Set up the actual frame.
+        wx.Frame.__init__(self, None, title='Pandas DataFrame Viewer')
 
-        # Get the columns and widths
-        self.cols = list(self.df.columns)
-        self.colwidth = [0]*len(self.cols)
+        # Make a panel and a notebook.
+        panel = wx.Panel(self)
+        notebook = wx.Notebook(panel)
 
-        # Set the scaling factors and height of the base frame and the text box parameters.
-        self.min_height = 200 #self.root.winfo_screenheight() - 50
-        self.min_width = 200 #self.root.winfo_screenwidth()
-        self.before_space = 1
-        self.hspace = 1.3
-        self.rows = 100
+        # Set up the pages.
+        page1 = Data(notebook, df, rows)
+        page2 = PageTwo(notebook)
+        page3 = PageThree(notebook)
 
-        # Run the window settings.
-        self.Window()
+        # Actually add the pages.
+        notebook.AddPage(page1,'Data')
+        notebook.AddPage(page2,'Page 2')
+        notebook.AddPage(page3,'Page 3')
 
-        # Make the menu bar.
-        self.TopMenu()
+        # Size the notebook correctly.
+        sizer = wx.BoxSizer()
+        sizer.Add(notebook, 1, wx.EXPAND)
+        panel.SetSizer(sizer)
 
-        # Make the scroll bar.
-        self.Scroll()
-
-        # Display the data.
-        self.DataView()
-
-        # Loop for the tkinter window.
-        while True:
-            self.root.update_idletasks()
-            self.root.update()
-        #self.root.mainloop()
-
-    def Window(self):
-        '''
-        Pull up the window and change settings there.
-        '''
-        # Define the title.
-        self.root.title('Panda\'s DataFrame Viewer')
-
-        # Set the minimum size.
-        self.root.minsize(width=self.min_width, height=self.min_height)
-
-        # Set the colors.
-        self.root.configure(background='black')
-
-    def TopMenu(self):
-        '''
-        Set up the top menu with settings and filters.
-        '''
-        # Initialize the menu.
-        menubar = Menu()
-
-        # Create a pulldown filter menu, and add it to the menu bar.
-        filemenu = Menu(menubar, tearoff=0)
-        filemenu.add_command(label='Test', command=self.Hello)
-        menubar.add_cascade(label='Filter', menu=filemenu)
-
-        # Create the settings menu.
-        editmenu = Menu(menubar, tearoff=0)
-        editmenu.add_separator()
-        editmenu.add_command(label='Exit', command=self.root.quit)
-        menubar.add_cascade(label='Settings', menu=editmenu)
-
-        # Create the help menu.
-        helpmenu = Menu(menubar, tearoff=0)
-        helpmenu.add_command(label='About', command=self.Hello)
-        menubar.add_cascade(label='Help', menu=helpmenu)
-
-        # Display the menu.
-        self.root.config(menu=menubar)
-
-    def Hello(self):
-        print('Hello')
-
-    def ScrollHelp(self, event):
-        '''
-        Configure the scroll bar.
-        '''
-        # Size the canvas and the scroll bar.
-        if self.orient == 'vertical':
-            self.canvas.configure(scrollregion=self.canvas.bbox('all'))
-        else:
-            self.canvas.configure(scrollregion=self.canvas.bbox('all'))
-
-    def Scroll(self):
-        '''
-        Set up the scroll bar.
-        '''
-        # Define the new frame.
-        myframe = Frame(bd=1, relief=SUNKEN)
-        myframe.pack(fill=BOTH, padx=5, pady=5, expand=TRUE)
-
-        # Set up the canvas for the scroll bar.
-        self.canvas = Canvas(myframe)
-        self.frame = Frame(self.canvas)
-
-        # Get a vertical scroll bar.
-        self.orient = 'vertical'
-        myscrollbar = Scrollbar(myframe, orient='vertical', command=self.canvas.yview)
-        self.canvas.configure(yscrollcommand=myscrollbar.set)
-
-        myscrollbar.pack(side='right',fill='y')
-        self.canvas.pack(side='left', fill='both', expand='yes')
-        self.canvas.create_window((0,0),window=self.frame,anchor='nw')
-        self.frame.bind("<Configure>", self.ScrollHelp)
-
-        # Get a horizontal scroll bar.
-        self.orient = 'horizontal'
-        myscrollbar1 = Scrollbar(myframe, orient='horizontal', command=self.canvas.xview)
-        self.canvas.configure(xscrollcommand=myscrollbar1.set)
-
-        myscrollbar1.pack(side='bottom',fill='x')
-        self.canvas.pack(side='top', fill='both', expand='yes')
-        self.canvas.create_window((0,0),window=self.frame,anchor='nw')
-        self.frame.bind("<Configure>", self.ScrollHelp)
-
-    def DataView(self):
-        '''
-        Set up the view for the data itself.
-        '''
-        # Make headers.
-        for num, x in enumerate(self.cols):
-            # Keep the column width, which will be twice the length of the label or the minimum of 50 and the longest string.
-            self.colwidth[num] = max(len(x)*2, min(50, self.df[x].astype(str).str.len().max()))
-
-            # Define the box and set the options.
-            text1 = Text(self.frame)
-            text1.tag_configure('center', justify='center', spacing1=self.before_space)
-            text1.insert(INSERT, x)
-            text1.config(font=('Times', 12, 'bold'), width=self.colwidth[num], height=self.hspace, wrap=NONE, state=DISABLED)
-            text1.tag_add('center', '1.0', 'end')
-            text1.grid(row=0, column=num, sticky=E+W)
-
-        # We will default to only seeing the first 100 rows, the user can get more.
-        if len(self.df) >= self.rows:
-            view = self.rows
-        else:
-            view = len(self.df)
-
-        for num, x in enumerate(self.cols):
-            for y in range(view):
-                # Get nan values right.
-                if pd.isnull(self.df[x].iloc[y]):
-                    var = 'nan'
-                else:
-                    var = self.df[x].iloc[y]
-
-                # Define the box and set the options.
-                text2 = Text(self.frame)
-                text2.tag_configure('center', justify='left', spacing1=self.before_space)
-                text2.insert(INSERT, var)
-                text2.config(font=('Times', 12), width=self.colwidth[num], height=self.hspace, wrap=NONE, state=DISABLED)
-                text2.tag_add('center', '1.0', 'end')
-                text2.grid(row=y+1, column=num, sticky=E+W)
+        # Set a status bar.
+        self.CreateStatusBar(1)
+        self.SetStatusText('{0} Columns, {1} Rows'.format(len(df.columns), page1.list.GetItemCount()))
 
 
-df = pd.read_csv(r'C:\Users\tanne\OneDrive\Python\stocks\data\batch4.csv', encoding='latin')
-#df = df[df.columns[0:1]]
-df['ones'] = 1
-df['test_col'] = 'Tanner Scott Eastmond'
-DataViewer(df)
+
+
+
+def View(df, rows=100):
+    '''
+    Create and run the main app.
+    '''
+    # Initialize the app.
+    app = wx.App()
+
+    # Call the class.
+    ex = DataViewer(df, rows=rows)
+
+    # Show and loop.
+    ex.Show()
+    app.MainLoop()
+
+
+if __name__ == '__main__':
+    df = pd.read_csv(r'C:\Users\tanne\OneDrive\Python\stocks\data\batch4.csv', encoding='latin')
+    df = df[df.columns[0:4]]
+    df['name'] = 'Tanner Scott Eastmond'
+    df.head()
+    View(df)
