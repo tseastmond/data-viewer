@@ -77,9 +77,24 @@ class DataViewer(wx.Frame):
         self.SetStatusText('{0} Columns, {1} Rows'.format(len(df.columns), page1.list.GetItemCount()))
         
         
+        # Ensure the app closes when exit button is clicked.
+        closeBtn = wx.Button(panel, label="Close")
+        closeBtn.Bind(wx.EVT_BUTTON, self.onClose)
+        
+        
         # Show and loop.
         self.Show()
         self.app.MainLoop()
+        
+        
+        # Delete the app.
+        del self.app
+        
+        
+    ###########################################################################
+    ###########################################################################
+    def onClose(self, event):
+        self.Destroy()
 
 
 
@@ -89,5 +104,7 @@ class DataViewer(wx.Frame):
 if __name__ == '__main__':
     df = pd.read_csv(r'C:\Users\tanne\OneDrive\Python\san_diego_unified\principals\clean.csv', encoding='latin')
     df.head()
+    df.iloc[-2]
+    df.tail()
     
-    DataViewer(df, rows=500)
+    DataViewer(df, rows=-5)
